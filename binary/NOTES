@@ -1,0 +1,4 @@
+Used Ghidra, which made both challenges the same.
+
+After checking hints for the level1 I assume I was suppose to get the password for the application with `strings` first, but for the life of me I couldn't get the binaries to run.
+
