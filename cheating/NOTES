@@ -1,0 +1,11 @@
+Current client file should be fine for flags 1 & 2
+Third flag for killing the boss is trickier.
+
+One solution I saw while capturing other flags was pure brute force. Someone was running 20+ clients and managed to kill the boss.
+I think the solution should use modified `shoot` message (since we can give x, y, and shooting directions separately) however shots further than 65 pixels(?) are removed.
+
+Current idea is to use the jump hack to safely travel to the boss, then find some magical shooting spot that is far enough away from the boss to be safe, but also does not block the projectiles.
+
+During testing with god mode I wasn't able to deal single point of damage to the boss.
+
+BTW to enable God mode for testing comment out gamelogic/commonlpy lines 244 - 246
