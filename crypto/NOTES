@@ -1,0 +1,3 @@
+first encrypted data seems to be PNG image
+however my naive script currently messes up some bytes
+ - shotti.png (72k) -> u.png (104k)
