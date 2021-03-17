@@ -9,6 +9,8 @@ import math
 
 from gamelogic import objects, world, common
 
+SOCK_COUNT = 2
+
 pygame.init()
 
 W, H = 800, 437
@@ -108,76 +110,106 @@ sendevent = []
 
 start_new_thread(update_gamestate_thread, ())
 
+sockets = set()
+main = None
+
+for i in range(SOCK_COUNT):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sockets.add(sock)
+
+serveraddr = "127.0.0.1"
+serveraddr = "challenge.fi" # Join remote server
+for sock in sockets:
+    if main is None:
+        main = sock
+    sock.connect((serveraddr, 9999))
+
+data = main.recv(1024).strip()
+my_id = json.loads(data)["player_id"]
 while True:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        serveraddr = "127.0.0.1"
-        # serveraddr = "challenge.fi" # Join remote server
-        sock.connect((serveraddr, 9999))
-        data = sock.recv(1024).strip()
-        my_id = json.loads(data)["player_id"]
-        while True:
-            me = None
-            for player in gamestate.players:
-                if player.id == my_id:
-                    me = player
-            if me:
-                keys = pygame.key.get_pressed()
-                for event in pygame.event.get():
-                    if event.type == pygame.QUIT:
-                        pygame.quit()
-                    if keys[pygame.K_r]:
-                        eka = 4900
-                        sendevent.append(
-                                # ['shoot', 4931.029795212544, 260.67432742841345, 1.7208623491309805]
-                                ['shoot', 4754.656506303356, 100, 0]
-                        )
-                    if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                        eka = me.x - 20 + math.cos(me.mouseDir(camera_pos)) * 60
-                        print(eka)
-                        toka = me.y - math.sin(me.mouseDir(camera_pos)) * 60
-                        mouse = me.mouseDir(camera_pos)
-                        sendevent.append(
-                            [
-                                "shoot", eka, toka, mouse
-                            ]
-                        )
-                        print(f"{eka}, {toka}, {mouse}")
-                if keys[pygame.K_SPACE]:
-                    sendevent.append(["jump"])
+    me = None
+    for player in gamestate.players:
+        if player.id == my_id:
+            me = player
+    if me:
+        sendevent.append(
+            [
+                ['shoot', 4900, 100, 0.38]
+            ])
+        keys = pygame.key.get_pressed()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+            if keys[pygame.K_x]:
+                eka = me.x #+ math.cos(me.mouseDir(camera_pos)) * 60
+                toka = me.y + 60 #- math.sin(me.mouseDir(camera_pos)) * 60
+                mouse = me.mouseDir(camera_pos)
+                sendevent.append(
+                    [
+                        "shoot", eka, toka, mouse
+                    ]
+                )
+                print(f"{eka}, {toka}, {mouse}")
+            if keys[pygame.K_r]:
+                eka = 4900
+                sendevent.append(
+                        # ['shoot', 4931.029795212544, 260.67432742841345, 1.7208623491309805]
+                        #['shoot', 4754.656506303356, 100, 0]
+                        ['shoot', 4900, 100, 0.38]
+                        #205.57772405728508, 297.39211224788403, 0.38633721482131445]
+                )
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                eka = me.x - 20 + math.cos(me.mouseDir(camera_pos)) * 60
+                print(eka)
+                toka = me.y - math.sin(me.mouseDir(camera_pos)) * 60
+                mouse = me.mouseDir(camera_pos)
+                sendevent.append(
+                    [
+                        "shoot", eka, toka, mouse
+                    ]
+                )
+                print(f"{eka}, {toka}, {mouse}")
+        if keys[pygame.K_SPACE]:
+            sendevent.append(["jump"])
 
-                if keys[pygame.K_m]:
-                    sendevent.append(["jump"])
-                    sendevent.append(["reload"])
-                if keys[pygame.K_a] and not me.dir == 1:
-                    sendevent.append(["left"])
-                elif keys[pygame.K_d] and not me.dir == -1:
-                    sendevent.append(["right"])
-                elif not me.dir == 0:
-                    sendevent.append(["stop"])
+        if keys[pygame.K_m]:
+            sendevent.append(["jump"])
+            sendevent.append(["reload"])
+            sendevent.append(["jump"])
+        if keys[pygame.K_a] and not me.dir == 1:
+            sendevent.append(["left"])
+        elif keys[pygame.K_d] and not me.dir == -1:
+            sendevent.append(["right"])
+        elif not me.dir == 0:
+            sendevent.append(["stop"])
 
-            common.parse_clientevents(my_id, json.dumps(sendevent), gamestate)
-            # for boss in gamestate.bosses:
-            #     print(f"{boss.id} {boss.x},{boss.y}, hp:{boss.hp}")
-            sock.sendall(bytes(json.dumps(sendevent), "utf-8"))
-            # if gamestate.projectiles:
-            #     for projectile in gamestate.projectiles:
-            #         print(f"{projectile.x},{projectile.y} d:{projectile.dir} r:{projectile.moveremaining}")
+    common.parse_clientevents(my_id, json.dumps(sendevent), gamestate)
+    # for boss in gamestate.bosses:
+    #     print(f"{boss.id} {boss.x},{boss.y}, hp:{boss.hp}")
+    for sock in sockets:
+        sock.sendall(bytes(json.dumps(sendevent), "utf-8"))
+    # if gamestate.projectiles:
+    #     for projectile in gamestate.projectiles:
+    #         print(f"{projectile.x},{projectile.y} d:{projectile.dir} r:{projectile.moveremaining}")
 
-            if sendevent:
-                print(sendevent)
-                print(f"{me.x},{me.y}")
-            sendevent = []
+    if sendevent:
+        print(sendevent)
+        print(f"{me.x},{me.y}")
+    sendevent = []
 
-            # receive packets until a valid json can be formed
-            response = b""
-            while True:
-                chunk = sock.recv(1000)
-                response += chunk
-                try:
-                    gamestate_dict, achievements = json.loads(response)
-                    gamestate = common.update_gamestate_from_dict(
-                        gamestate, gamestate_dict
-                    )
-                    break
-                except Exception as e:
-                    pass
+    for boss in gamestate.bosses:
+        print(boss.x-me.x, boss.y-me.y, boss.hp)
+
+    # receive packets until a valid json can be formed
+    response = b""
+    while True:
+        chunk = main.recv(1000)
+        response += chunk
+        try:
+            gamestate_dict, achievements = json.loads(response)
+            gamestate = common.update_gamestate_from_dict(
+                gamestate, gamestate_dict
+            )
+            break
+        except Exception as e:
+            pass
